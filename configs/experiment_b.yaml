@@ -1,0 +1,15 @@
+# 实验组 B: A + 每十帧 DINOv3 校正(仅周期触发) —— 指标: 关联改善、重捕时间、开销
+corrector:
+  enabled: true
+  backend: dinov3
+
+scheduler:
+  interval_frames: 10
+  event_triggers:
+    enabled: false
+
+prediction:
+  backend: none
+
+recorder:
+  dir: runs/exp_b

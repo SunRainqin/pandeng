@@ -1,0 +1,16 @@
+# 实验组 E: C + 学习的时序预测 —— 指标: 相对 D 组的跟随增益
+# 需要先把时序头权重放到 prediction.weights(第二阶段工作, 尚无训练流程)
+corrector:
+  enabled: true
+  backend: dinov3
+
+scheduler:
+  event_triggers:
+    enabled: true
+
+prediction:
+  backend: learned
+  weights: weights/temporal_head.pt
+
+recorder:
+  dir: runs/exp_e

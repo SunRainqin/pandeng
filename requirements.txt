@@ -1,0 +1,38 @@
+# 开发与岸端训练依赖 (Python 3.10)
+# 安装: pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu118
+
+# --- 深度学习基础 ---
+torch==2.6.0
+torchvision==0.21.0
+timm>=1.0.9
+
+# --- 检测与跟踪 ---
+ultralytics==8.4.8
+lap>=0.5.12            # 线性分配(Hungarian), ByteTrack 关联使用
+
+# --- 视觉与数值 ---
+opencv-python>=4.10.0.84
+numpy>=1.26,<3
+scipy>=1.11
+Pillow>=10.2
+
+# --- 配置与日志 ---
+PyYAML>=6.0
+tqdm>=4.66
+rich>=13.7
+
+# --- 训练与评估 ---
+pycocotools>=2.0.7
+pandas>=2.0
+
+# --- 导出 (Orin 部署链路 ONNX -> TensorRT) ---
+onnx>=1.16.0
+onnxruntime>=1.18.0
+onnxslim>=0.1.34
+
+# --- DINOv3 离线资源获取与加载 ---
+# 纯链路自检(mock / torchvision 回退骨干)不需要; 需 DINOv3 时另行安装:
+#   pip install -r requirements-dinov3.txt
+
+# --- 测试 ---
+pytest>=8.0

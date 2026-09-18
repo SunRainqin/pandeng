@@ -1,0 +1,13 @@
+# DINOv3 离线资源获取与加载所需的额外依赖。
+#
+# 只在**需要 DINOv3 的机器**上安装; 纯链路自检(mock / 回退骨干)不需要。
+#   pip install -r requirements-dinov3.txt
+#
+# 说明:
+#   transformers     —— 从本地快照构造 DINOv3ViTModel
+#   safetensors      —— 读取 model.safetensors
+#   einops           —— DINOv3ViTModel 的运行时依赖
+
+transformers>=4.56
+safetensors>=0.4.3
+einops>=0.8.0

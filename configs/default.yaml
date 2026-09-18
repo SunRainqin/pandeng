@@ -1,0 +1,216 @@
+# 快慢双环跟踪默认配置。
+# 快环: YOLO11n -> ByteTrack -> 目标状态 -> 图像伺服 -> 仲裁
+# 慢环: 每 N 帧 / 事件触发 -> DINOv3 + 目标记忆 -> 关联校正
+# 时间单位秒; 控制量为归一化受限值。
+
+project:
+  output_dir: runs
+
+# video | camera | image_dir | sequence_dir | synthetic | simulated
+source:
+  type: video
+  path: data/demo/demo.mp4
+  width: 1280
+  height: 720
+  fps: 30
+  loop: false
+  max_frames: 0
+  realtime_pacing: false   # 按 fps 限速; 只有开启时 fast_hz 指标才有意义
+  # type=sequence_dir: 每个视频一个子目录的连续序列集合
+  #   <root>/<image_subdir>/<split>/<video>/*.png
+  #   <root>/<label_subdir>/<split>/<video>/*.txt   (可选, 逐帧对齐)
+  root: null
+  splits: [val, test]
+  image_subdir: images
+  label_subdir: labels
+  max_sequences: 0         # 0 = 全部
+  require_labels: false
+  # type=simulated 时的闭环载体参数
+  sim:
+    fov_h_deg: 70.0
+    fov_v_deg: 45.0
+    max_yaw_rate: 0.6
+    max_speed: 0.8
+    max_depth_rate: 0.35
+    fish_size_m: 0.35
+    n_fish: 1
+    noise_std_px: 1.5
+    dropout_prob: 0.0
+    initial_distance: 6.0
+    initial_bearing_deg: 18.0
+    initial_depth_offset: 1.0
+
+# 检测评估: 只对**有标注**的帧计分。
+# 数据集里大量帧没有标注(方案第 5 节的标注策略), 把无标注帧当成"无目标"
+# 会把正常检测算成误检, 因此这类帧被排除在 TP/FP/FN 之外, 数量单独上报。
+evaluation:
+  iou_thresh: 0.5          # 贪心匹配的 IoU 阈值
+  per_class: true          # 额外输出按类别的 P/R/F1
+
+detector:
+  backend: ultralytics     # ultralytics | onnx | tensorrt | mock | scenario
+  weights: weights/fish_yolo11n.pt
+  fallback_weights: yolo11n.pt   # COCO 回退, 不含鱼类类别, 仅链路自检
+  imgsz: 640
+  conf: 0.35
+  iou: 0.50
+  device: cuda:0
+  half: true
+  max_det: 20
+  classes: null
+  warmup: 3
+  mock:                    # backend=mock 时使用
+    fps: 30.0
+    score: 0.85
+    box_size: 0.10
+    noise: 0.004
+    dropout_prob: 0.0
+    extra_targets: 0
+    seed: 0
+  scenario:                # backend=scenario 时使用(读仿真真值框)
+    score: 0.88
+    score_jitter: 0.05
+    dropout_prob: 0.0
+    seed: 0
+
+tracker:
+  track_high_thresh: 0.50  # 第一轮关联的高分阈值
+  track_low_thresh: 0.10   # 第二轮关联(遮挡恢复)
+  new_track_thresh: 0.60
+  match_thresh: 0.80       # 代价阈值 = 1 - IoU
+  track_buffer: 30
+  min_box_area: 100
+  kalman:
+    std_weight_position: 0.05
+    std_weight_velocity: 0.00625
+
+target:
+  mode: single             # single | school
+  select: largest          # largest | nearest_center | highest_score
+  school:
+    min_score: 0.30
+    min_count: 2
+  switch_hysteresis: 0.25  # 候选需优于当前目标该比例才允许切换
+  min_visible_frames: 5
+  lost_timeout_s: 2.0
+
+corrector:
+  enabled: true
+  backend: dinov3          # dinov3 | mock
+  # transformers= 使用已准备好的本地 HF 快照
+  # auto/torchhub 保留用于兼容已有实验配置
+  impl: auto
+  model: dinov3_vits16
+  hub_repo: facebookresearch/dinov3
+  hf_dir: null             # transformers 路径的快照目录
+  repo_dir: null           # torch.hub 路径的源码目录
+  weights: weights/dinov3_vits16_pretrain.pth
+  allow_fallback: true     # 正式实验应设 false, 回退骨干会让 B/C/D/E 结论失真
+  device: cuda:0
+  input_size: 224
+  freeze_backbone: true
+  fp16: true
+  max_candidates: 8        # 单次校正最多处理的候选区域数
+  crop_expand: 1.25
+  score_weights:           # 三证据融合; 不单独依靠外观切换目标
+    appearance: 0.60
+    position: 0.25
+    motion: 0.15
+  accept_thresh: 0.62
+  reid_thresh: 0.55
+  drift_thresh: 0.45
+  cross_penalty: 0.15      # 交叉时从位置权重挪走的量
+  switch_margin: 0.12
+  motion_scale: 1.50       # 运动衰减尺度, 以目标框对角线为单位
+  mock:
+    input_size: 64
+
+memory:
+  max_templates: 5
+  min_template_score: 0.75
+  update_momentum: 0.20
+  consistency_gate: 0.70
+  freeze_on_occlusion: true
+  max_freeze_s: 1.5
+  min_update_interval_s: 0.5
+
+scheduler:
+  interval_frames: 10      # 每 N 个已处理帧触发一次周期校正
+  max_request_hz: 5.0      # 提交请求的墙钟上限
+  event_min_interval_s: 0.40
+  event_triggers:
+    enabled: true
+    conf_drop: 0.35
+    edge_margin: 0.12
+    cross_check: true
+    reid_check: true
+  timeout_s: 1.00
+  queue_size: 1
+  warmup_skip_frames: 5
+  max_consecutive_overruns: 3
+  cooldown_s: 5.0
+
+controller:
+  rate_hz: 10
+  mode: pd                # pd | pid
+  gains:
+    yaw:   {kp: 0.90, ki: 0.00, kd: 0.25}
+    heave: {kp: 0.50, ki: 0.00, kd: 0.15}
+    surge: {kp: 0.60, ki: 0.00, kd: 0.10}
+  deadzone:
+    ex: 0.05
+    ey: 0.05
+  limits:
+    surge: [-0.20,  0.50]
+    yaw:   [-0.60,  0.60]
+    heave: [-0.30,  0.30]
+  rate_limit:             # 每秒最大变化量
+    surge: 0.40
+    yaw:   0.80
+    heave: 0.30
+  surge_policy:
+    base: 0.15
+    center_gate: 0.25
+    area_stop: 0.30
+    area_growth_stop: 0.08
+    area_growth_decay: 0.50
+  search:
+    yaw_rate: 0.35
+    timeout_s: 6.0
+  depth:
+    fixed_enabled: true
+    fixed_target_m: 1.50
+    slow_adjust: false
+    adjust_gain: 0.15
+  safety:
+    perception_timeout_s: 0.50
+    on_perception_stale: exit   # exit | hold
+    on_device_fault: exit
+  gate:                   # 校正结果门控(年龄与一致性)
+    max_age_s: 0.60
+    min_confidence: 0.40
+    smooth_alpha: 0.35
+    max_offset_ratio: 0.25
+
+prediction:               # 第二阶段; 首版 backend=none
+  backend: none           # none | constant_velocity | learned
+  horizon_s: 0.50
+  history_len: 30
+  min_samples: 5
+  leave_view_margin: 0.85
+  weights: weights/temporal_head.pt
+  device: cuda:0
+  limits:
+    max_yaw_hint: 0.25
+    min_surge_scale: 0.20
+
+recorder:
+  enabled: true
+  dir: runs
+  save_video: true
+  save_csv: true
+  save_jsonl: true
+  draw: true
+
+logging:
+  level: INFO

@@ -1,0 +1,9 @@
+# 实验组 A: 基线(仅快速环) —— 指标: 成功率、误切目标、丢失
+corrector:
+  enabled: false
+
+prediction:
+  backend: none
+
+recorder:
+  dir: runs/exp_a

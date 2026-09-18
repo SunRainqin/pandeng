@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# 运行产物与数据
+runs/
+data/
+weights/
+
+# DINOv3 离线资源(体积大, 不入库)
+*.pth
+*.onnx
+*.engine
+
+.vscode/

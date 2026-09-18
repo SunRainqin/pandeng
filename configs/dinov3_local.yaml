@@ -1,0 +1,17 @@
+# 本地 DINOv3 资源指向。
+# 获取: python scripts/download_dinov3.py --dest /data2/zyq/weights/DINOv3
+# 校验: python scripts/download_dinov3.py --verify
+#
+# 用法: python -m pandeng.cli.track --overlay configs/dinov3_local.yaml \
+#           --override source.type=simulated detector.backend=scenario
+#
+# allow_fallback=false: 资源缺失直接报错, 不静默换成 torchvision ViT
+# (回退骨干会让实验组 B/C/D/E 的关联改善结论失真)。
+corrector:
+  backend: dinov3
+  impl: transformers
+  hf_dir: /data2/zyq/weights/DINOv3/hf/dinov3-vits16-pretrain-lvd1689m
+  repo_dir: null
+  weights: null
+  allow_fallback: false
+  device: cuda:0

@@ -1,0 +1,14 @@
+# 实验组 D: C + 恒速预测 —— 指标: 预测辅助控制基线
+corrector:
+  enabled: true
+  backend: dinov3
+
+scheduler:
+  event_triggers:
+    enabled: true
+
+prediction:
+  backend: constant_velocity
+
+recorder:
+  dir: runs/exp_d

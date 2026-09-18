@@ -1,0 +1,15 @@
+# 实验组 C: B + 事件触发 —— 指标: 关键时刻响应与额外推理次数
+corrector:
+  enabled: true
+  backend: dinov3
+
+scheduler:
+  interval_frames: 10
+  event_triggers:
+    enabled: true
+
+prediction:
+  backend: none
+
+recorder:
+  dir: runs/exp_c
